@@ -26,6 +26,7 @@ recipe            "riak", "Installs Riak"
 recipe            "riak::autoconf", "Automatically configure nodes from chef-server information."
 recipe            "riak::innostore", "Install and configure the Innostore backend."
 recipe            "riak::iptables", "Automatically configure iptables rules for Riak."
+recipe            "riak::remove", "Uninstall Riak pkg"
 depends           "iptables"
 
 %w{ubuntu debian}.each do |os|
