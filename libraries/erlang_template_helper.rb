@@ -1,4 +1,26 @@
 module Eth
+  module Erlang
+    module String
+      def to_erl_string
+        "__string_#{self}"
+      end
+
+      def to_erl_binary
+        "__binary_#{self}"
+      end
+    end
+
+    module Array
+      def to_erl_tuple
+        ["__tuple"] + self
+      end
+
+      def to_erl_list
+        ["__list"] + self
+      end
+    end
+  end
+
   module InstanceMethods
     def convert(value)
       case value
@@ -45,19 +67,38 @@ module Eth
 
     def to_s
       case @str
-      when /^__atom_(.*)/
-        "'#{$1}'"
       when /^__binary_(.*)/
-        "<<\"#{$1}\">>"
+        to_binary($1)
       when /^__string_(.*)/
-        "\"#{$1}\""
+        to_string($1)
+      when /^__atom_(.*)/
+        to_atom($1)
       else
-        @str
+        to_atom(@str)
       end
     end
 
     def pp(level=0)
       to_s
+    end
+
+    private
+
+    def to_binary(str)
+      "<<\"#{str}\">>"
+    end
+
+    def to_string(str)
+      "\"#{str}\""
+    end
+
+    def to_atom(str)
+      case str
+      when /^[a-z][\w@]*$/
+        str
+      else
+        "'#{str}'"
+      end
     end
   end
 
@@ -95,7 +136,7 @@ module Eth
         "{#{values1.join(", ")}}"
       else
         values1 = @values.map { |v| "\n#{indent(level+1)}#{v.pp(level+1)}" }
-        "[#{values1.join(", ")}\n#{indent(level)}]"
+        "[#{values1.join(",")}\n#{indent(level)}]"
       end
     end
   end
@@ -104,26 +145,26 @@ module Eth
     include InstanceMethods
 
     def initialize(hsh)
-      @hsh = {}
-      hsh.map do |k,v|
+      @data = []
+      hsh.sort.map do |k,v|
         k1 = Eth::String.new(k.to_s)
         v1 = convert(v)
-        @hsh[k1] = v1
+        @data << [k1, v1]
       end
     end
 
     def to_s
-      values = @hsh.map do |k,v|
+      values = @data.map do |k,v|
         "{#{k.to_s}, #{v.to_s}}"
       end
       "[#{values.join(", ")}]"
     end
 
     def pp(level=0)
-      values = @hsh.map do |k,v|
+      values = @data.map do |k,v|
         "\n#{indent(level+1)}{#{k.to_s}, #{v.pp(level+1)}}"
       end
-      "[#{values.join(", ")}\n#{indent(level)}]"
+      "[#{values.join(",")}\n#{indent(level)}]"
     end
   end
 
@@ -151,14 +192,14 @@ module Eth
     def expand(k1, v1)
       case v1
       when ::Hash
-        v1.map { |k2, v2| expand("#{k1} #{k2}", v2) }
+        v1.sort.map { |k2, v2| expand("#{k1} #{k2}", v2) }
       else
         "#{k1} #{v1}"
       end
     end
 
     def to_a
-      @args.map { |k, v| expand(k, v) }.flatten
+      @args.sort.map { |k, v| expand(k, v) }.flatten
     end
 
     def to_s
